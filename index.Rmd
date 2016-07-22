@@ -1,0 +1,195 @@
+---
+title: "Machine Learning - Project 1"
+author: "Sam Gardiner"
+date: "July 17, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE)
+library(ggplot2)
+library(caret)
+library(e1071)
+```
+
+## Dataset Description
+The training dataset has 19622 rows and 160 columns, while the testing dataset (finalTest) is 20 rows, 160 columns.  The training dataset outcome variable "classe" is a factor with 5 different levels: A,B,C,D and E.  A is the classification for the exercise performed correctly, while B through E are different ways the exercise is performed incorrectly. Since the outcomes are not continuous, accuracy measurements (sensitivity and specificity) will be relevant and error measurements like RMSE (Mean Square Error) will not be relevant. 
+```{r, echo = TRUE}
+# Read training / testing datasets from http://groupware.les.inf.puc-rio.br/har
+training <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+finalTest <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+```
+
+## Cross validation
+A cross validation strategy would be to develop prediction models based on a split of the training set into a training (training2) and test dataset (testing2), using the createDataPartition function.  The split chosen was 70% training (13737 rows) and 30% testing (5885).
+```{r, echo = TRUE}
+inTrain <- createDataPartition(y = training$classe, p = 0.7, list = FALSE)
+# take original training set and split into training (70%) and testing (30%)
+training2 <- training[inTrain,]
+testing2 <- training[-inTrain,]
+```
+
+## Preparing the dataset
+The original downloaded dataset (finalTest) is only 20 rows.  A cursory look at the data shows that majority of the columns (100 out of 160) are completely filled with NA entries.  Since these columns won't be important for the final testing, they're not relevant for the fitted model and can be eliminated for the training2 dataset.  In addition, the columns 1,2,5,6 and 7 are extraneous variables (user_name, timestamps and windows) and can be eliminated from the training2 dataset.
+
+```{r, echo = TRUE}
+NAcol <- NULL
+for (i in 1:ncol(training)) {
+        if(sum(!is.na(finalTest[,i])) == 0) {NAcol <- c(NAcol, i)}
+}
+# Columns 1,2,5,6,7 are also eliminated from the training sets
+NAcol <- c(1,2,5:7,NAcol)
+training2 <- training2[,-NAcol]
+```
+
+To speed up evaluation of different machine learning algorithms, a smaller training dataset (smallTrain) was created that is a 5% sampling of the training2 dataset, with 689 rows and 55 columns.
+```{r, echo = TRUE}
+# create small practice training set
+inTrain2 <- createDataPartition(y = training2$classe, p = 0.05, list = FALSE)
+smallTrain <- training2[inTrain2,]
+```
+
+## Building and evaluating prediction models
+Using the smallTrain dataset, the following machine learning algorithms were evaluated for processing speed and accuracy:  
+- recursive partitioning (rpart)  
+- boosted trees (gbm)  
+- linear discriminant analysis (lda)  
+- random forests (rf)  
+- bagging (treebag)  
+  
+While model training was done on the smallTrain dataset, evaluation of accuracy was performed on the full testing2 dataset (5885 observations, 160 variables)
+
+Note: for performance reasons on the random forests machine learning algorithm, the randomForest package was used instead of the caret package train(method = "rf") function.
+
+```{r, echo=TRUE}
+# rpartModFit - recursive partitioning method
+ptm <- proc.time()
+rpartModFit <- train(classe ~., data = smallTrain, method = "rpart")
+rpartPtm <- (proc.time() - ptm)[3]  # record total elapsed time
+
+# gbmModFit - boosted trees method
+ptm <- proc.time()
+gbmModFit <- train(classe ~., data = smallTrain, method = "gbm", verbose = FALSE)
+gbmPtm <- (proc.time() - ptm)[3]
+
+# ldaModFit - linear discriminant analysis method
+ptm <- proc.time()
+ldaModFit <- train(classe ~., data = smallTrain, method = "lda")
+ldaPtm <- (proc.time() - ptm)[3]
+
+# rfModFit - random forests, k-fold (number = 5) cross validation
+ptm <- proc.time()
+rfModFit <- train(classe ~., data = smallTrain, method = "rf", trControl = trainControl(method = "cv", number = 5), ntree = 100)
+rfPtm <- (proc.time() - ptm)[3]
+
+# bagModFit - bagging method using "treebag" method
+ptm <- proc.time()
+bagModFit <- train(classe ~., data = smallTrain, method = "treebag")
+bagPtm <- (proc.time() - ptm)[3]
+```
+
+```{r, echo = FALSE}
+# Calculate and record results
+# initialize evaluation results data frame
+results <- as.data.frame(matrix(nrow = 5, ncol = 2))
+rownames(results) <- c("rpart", "gbm", "lda", "rf", "bag")
+colnames(results) <- c("elapsed", "accuracy")
+
+# rpart
+rpartPred <- predict(rpartModFit, testing2)
+rpartAccuracy <- round(sum(rpartPred == testing2$classe)/nrow(testing2),4)
+# print(paste("Accuracy of rpart model:", rpartAccuracy))
+results[1,] <- c(rpartPtm, rpartAccuracy)
+
+# gbm
+gbmPred <- predict(gbmModFit, testing2)
+gbmAccuracy <- round(sum(gbmPred == testing2$classe)/nrow(testing2),4)
+# print(paste("Accuracy of gbm model:", gbmAccuracy))
+results[2,] <- c(gbmPtm, gbmAccuracy)
+
+# lda
+ldaPred <- predict(ldaModFit, testing2)
+ldaAccuracy <- round(sum(ldaPred == testing2$classe)/nrow(testing2),4)
+# print(paste("Accuracy of lda model:", ldaAccuracy))
+results[3,] <- c(ldaPtm,ldaAccuracy)
+
+# rf
+rfPred <- predict(rfModFit, testing2)
+rfAccuracy <- round(sum(rfPred == testing2$classe)/nrow(testing2),4)
+# print(paste("Accuracy of rf model:", rfAccuracy))
+results[4,] <- c(rfPtm,rfAccuracy)
+
+# bag
+bagPred <- predict(bagModFit, testing2)
+bagAccuracy <- round(sum(bagPred == testing2$classe)/nrow(testing2),4)
+# print(paste("Accuracy of treebag model:", bagAccuracy))
+results[5,] <- c(bagPtm,bagAccuracy)
+```
+
+From the results of machine learning algorithms, the "rpart" and "lda" methods had fast processing times, but were only 50% - 70% accurate.  The "gbm", "rf" and "bag" methods had 92% - 94% accuracy, but the "rf" method had the fastest processing time of the three (even using the "cv" cross validation method), helped by optimization of some of the parameters. The "gbm" method had by far the longest processing time.
+
+```{r, echo = FALSE}
+print(results)
+
+p <- ggplot(results, aes(x = elapsed, y = accuracy))
+p + geom_point(aes(color = rownames(results))) + labs(x = "Processing Time", y = "Accuracy", title = "Machine Learning Methods ") + geom_text(data = results, aes(x=elapsed,y=accuracy, label = rownames(results), hjust = -0.5)) + xlim(0,90)
+```
+
+## In sample and out of sample accuracy (error)
+For the final evaluation, the randomForest algorithm is used on the full training2 data set.  The processing time on the full 13737 row training2 dataset was approximately 120 seconds on my computer.  The in sample model accuracy is 0.99716.  
+```{r, echo = TRUE}
+ptm <- proc.time()
+# rfModFit2 <- randomForest(classe ~., data = training2)
+rfModFit2 <- train(classe ~., data = training2, method = "rf", trControl = trainControl(method = "cv", number = 5), ntree = 100)
+rfPtm2 <- (proc.time() - ptm)[3]
+print(paste("Processing time for rf method on training2 dataset:",rfPtm2))
+print(paste("In sample accuracy of the random forests algorithm:", round((rfModFit2$results[2,2]),5)))
+```
+
+Out of sample accuracy should be very close to the in sample accuracy, because cross validation was used in fitting the model.  The results below show this to be the case, 0.99779.
+```{r, echo = TRUE}
+rfPred2 <- predict(rfModFit2, testing2)
+rfAccuracy2 <- round(sum(rfPred2 == testing2$classe)/nrow(testing2),5)
+print(paste("Out of sample accuracy of random forests algorithm:", rfAccuracy2))
+print(confusionMatrix(testing2$classe, rfPred2)) 
+```
+
+## Further optimization of the predictors used in the random forest model
+To speed processing time, other predictors (variables) can sometimes be eliminated due to lack of variability.  Using the nearZeroVar function, the variables were tested for zero variance or near zero variance.  All resulted in FALSE, meaning none could be eliminated for this reason.
+```{r, echo = TRUE}
+nzv <- nearZeroVar(training2, saveMetrics = TRUE)
+print(paste(sum(nzv$nzv + nzv$zeroVar),"predictors are removed due to lack of variability."))
+```
+
+Next, the varImp function was used to identify the most important variables for the random forest prediction model to see whether the rest can be eliminated.
+```{r, echo = TRUE}
+print(varImp(rfModFit2))
+```
+
+From the results, it appears the top 8 variables have the greatest effect on the model.  The subsequent model built with just these 8 variables have essentially the same accuracy (99.767%) as the full training2 dataset with 54 variables, but runs in about 1/6 of the the time at 19 seconds.  This was a really impressive result in reduction of processing time, with no tradeoff in error rate.
+```{r, echo = TRUE}
+# columns numbers in order of greatest importance
+import = order(varImp(rfModFit2)$importance, decreasing = TRUE)[1:8]
+
+# traing the model on the training2 dataset with only the top 8 variables
+ptm <- proc.time()
+rfModFit3 <- train(classe ~., data = training2[,c(import,55)], method = "rf", trControl = trainControl(method = "cv", number = 5), ntree = 100)
+rfPtm3 <- (proc.time() - ptm)[3]
+print(paste("Processing time for rf method on training2 dataset:",rfPtm3))
+print(paste("In sample accuracy of the random forests algorithm:", round((rfModFit3$results[2,2]),5)))
+```
+
+## Final results on 20 test cases
+Final results of the rfModFit2 model are run on the original testing dataset (finalTest), with 20 rows of data.  Results are 20 / 20, 100% accurate.
+```{r, echo = TRUE}
+rfPredFinal <- predict(rfModFit2, finalTest[,-c(160)])
+
+finalResults <- as.data.frame(matrix(nrow = 1, ncol = 20))
+rownames(finalResults) <- c("results")
+colnames(finalResults) <- finalTest$problem_id
+finalResults <- rfPredFinal
+
+print("Accuracy on original testing dataset is 20 / 20"); print(finalResults)
+```
+
+
