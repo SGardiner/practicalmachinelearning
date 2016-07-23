@@ -1,7 +1,7 @@
 ---
 title: "Machine Learning - Project 1"
 author: "Sam Gardiner"
-date: "July 17, 2016"
+date: "July 22, 2016"
 output: 
   html_document: 
     keep_md: yes
@@ -138,7 +138,7 @@ p + geom_point(aes(color = rownames(results))) + labs(x = "Processing Time", y =
 ```
 
 ## In sample and out of sample accuracy (error)
-For the final evaluation, the randomForest algorithm is used on the full training2 data set.  The processing time on the full 13737 row training2 dataset was approximately 120 seconds on my computer.  The in sample model accuracy is 0.99687.  
+For the final evaluation, the randomForest algorithm is used on the full training2 data set.  The processing time on the full 13737 row training2 dataset was approximately 120 seconds on my computer.  Cross validation was used (method = "cv", number = 5), which added to the processing time.  The in sample model accuracy is very high though at 0.99687.  The error rate is (1 - accuracy) = 0.00313.  
 ```{r, echo = TRUE}
 ptm <- proc.time()
 # rfModFit2 <- randomForest(classe ~., data = training2)
@@ -148,7 +148,7 @@ print(paste("Processing time for rf method on training2 dataset:",rfPtm2))
 print(paste("In sample accuracy of the random forests algorithm:", round((rfModFit2$results[2,2]),5)))
 ```
 
-Out of sample accuracy should be very close to the in sample accuracy, because cross validation was used in fitting the model.  The results below show this to be the case, 0.99813.
+The estimated out of sample error rate should be very close to the in sample error, because cross validation was used in fitting the model.  The results below show this to be the case with an error rate of 0.00187, or an accuracy of 0.99813.
 ```{r, echo = TRUE}
 rfPred2 <- predict(rfModFit2, testing2)
 rfAccuracy2 <- round(sum(rfPred2 == testing2$classe)/nrow(testing2),5)

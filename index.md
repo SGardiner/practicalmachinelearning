@@ -1,6 +1,6 @@
 # Machine Learning - Project 1
 Sam Gardiner  
-July 17, 2016  
+July 22, 2016  
 
 
 
@@ -102,7 +102,7 @@ From the results of machine learning algorithms, the "rpart" and "lda" methods h
 ![](index_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
 
 ## In sample and out of sample accuracy (error)
-For the final evaluation, the randomForest algorithm is used on the full training2 data set.  The processing time on the full 13737 row training2 dataset was approximately 120 seconds on my computer.  The in sample model accuracy is 0.99687.  
+For the final evaluation, the randomForest algorithm is used on the full training2 data set.  The processing time on the full 13737 row training2 dataset was approximately 120 seconds on my computer.  Cross validation was used (method = "cv", number = 5), which added to the processing time.  The in sample model accuracy is very high though at 0.99687.  The error rate is (1 - accuracy) = 0.00313.  
 
 ```r
 ptm <- proc.time()
@@ -124,7 +124,7 @@ print(paste("In sample accuracy of the random forests algorithm:", round((rfModF
 ## [1] "In sample accuracy of the random forests algorithm: 0.99687"
 ```
 
-Out of sample accuracy should be very close to the in sample accuracy, because cross validation was used in fitting the model.  The results below show this to be the case, 0.99813.
+The estimated out of sample error rate should be very close to the in sample error, because cross validation was used in fitting the model.  The results below show this to be the case with an error rate of 0.00187, or an accuracy of 0.99813.
 
 ```r
 rfPred2 <- predict(rfModFit2, testing2)

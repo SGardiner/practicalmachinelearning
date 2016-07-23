@@ -11,7 +11,7 @@
 
 <meta name="author" content="Sam Gardiner" />
 
-<meta name="date" content="2016-07-17" />
+<meta name="date" content="2016-07-22" />
 
 <title>Machine Learning - Project 1</title>
 
@@ -118,7 +118,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Machine Learning - Project 1</h1>
 <h4 class="author"><em>Sam Gardiner</em></h4>
-<h4 class="date"><em>July 17, 2016</em></h4>
+<h4 class="date"><em>July 22, 2016</em></h4>
 
 </div>
 
@@ -198,7 +198,7 @@ bagPtm &lt;- (proc.time() - ptm)[3]</code></pre>
 </div>
 <div id="in-sample-and-out-of-sample-accuracy-error" class="section level2">
 <h2>In sample and out of sample accuracy (error)</h2>
-<p>For the final evaluation, the randomForest algorithm is used on the full training2 data set. The processing time on the full 13737 row training2 dataset was approximately 120 seconds on my computer. The in sample model accuracy is 0.99687.</p>
+<p>For the final evaluation, the randomForest algorithm is used on the full training2 data set. The processing time on the full 13737 row training2 dataset was approximately 120 seconds on my computer. Cross validation was used (method = “cv”, number = 5), which added to the processing time. The in sample model accuracy is very high though at 0.99687. The error rate is (1 - accuracy) = 0.00313.</p>
 <pre class="r"><code>ptm &lt;- proc.time()
 # rfModFit2 &lt;- randomForest(classe ~., data = training2)
 rfModFit2 &lt;- train(classe ~., data = training2, method = &quot;rf&quot;, trControl = trainControl(method = &quot;cv&quot;, number = 5), ntree = 100)
@@ -207,7 +207,7 @@ print(paste(&quot;Processing time for rf method on training2 dataset:&quot;,rfPt
 <pre><code>## [1] &quot;Processing time for rf method on training2 dataset: 119.602&quot;</code></pre>
 <pre class="r"><code>print(paste(&quot;In sample accuracy of the random forests algorithm:&quot;, round((rfModFit2$results[2,2]),5)))</code></pre>
 <pre><code>## [1] &quot;In sample accuracy of the random forests algorithm: 0.99687&quot;</code></pre>
-<p>Out of sample accuracy should be very close to the in sample accuracy, because cross validation was used in fitting the model. The results below show this to be the case, 0.99813.</p>
+<p>The estimated out of sample error rate should be very close to the in sample error, because cross validation was used in fitting the model. The results below show this to be the case with an error rate of 0.00187, or an accuracy of 0.99813.</p>
 <pre class="r"><code>rfPred2 &lt;- predict(rfModFit2, testing2)
 rfAccuracy2 &lt;- round(sum(rfPred2 == testing2$classe)/nrow(testing2),5)
 print(paste(&quot;Out of sample accuracy of random forests algorithm:&quot;, rfAccuracy2))</code></pre>
